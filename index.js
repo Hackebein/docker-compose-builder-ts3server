@@ -23,7 +23,6 @@ let services = {};
 let crawler = new Crawler({
     logger: log,
     maxConnections: 1,
-    rateLimit: 1000,
     skipDuplicates: true,
     timeout: 1000,
     retryTimeout: 1500,
@@ -38,7 +37,7 @@ let crawler = new Crawler({
             error.op = 'abort';
         }
         if(_.isUndefined(error.op)) {
-            done();
+            setTimeout(done, 500);
         } else {
             done(error);
         }
@@ -154,77 +153,78 @@ crawler.queue({
     jail: new RegExp('^' + esr('http://dl.4players.de/ts/releases/pre_releases/server/') + '(?:' + RegExVersion.source + '(?:' + esr('/') + '(?:' + RegExServerFilename.source + ')?' + ')?' + ')?' + '$'),
 });
 
-setTimeout(() => {
-    crawler.on('drain', () => {
-        releases = _.chain(releases)
-            .groupBy('name')
-            .map(mirrors => _.chain(mirrors).first().omit('mirror').extend({mirrors: _.map(mirrors, 'mirror')}).value())
-            .sortBy(release => release.version.replace(/\d+/g, n => +n+1000) + (_.isUndefined(release.stage) ? '0' : '1') + release.platform + (_.isUndefined(release.stage) ? '' : release.stage))
-            .value();
-        _.chain(releases).map('version').uniq().each((version) => {
-            let lastIndex = -1;
-            _.chain(archs).each((platform) => {
-                if(lastIndex == -1) {
-                    lastIndex = _.findLastIndex(releases, release => release.platform === platform && release.version === version && _.isUndefined(release.stage));
-                }
-            });
-            if(lastIndex >= 0) {
-                releases[lastIndex].tags.push(version);
-            }
-        });
-        _.each(archs, (platform) => {
-            let lastIndex = _.findLastIndex(releases, release => release.platform === platform && !_.isUndefined(release.stage));
-            if(lastIndex >= 0) {
-                releases[lastIndex].tags.push('latest-pre-' + platform);
-            }
-        });
-        _.each(archs, (platform) => {
-            let lastIndex = _.findLastIndex(releases, release => release.platform === platform && _.isUndefined(release.stage));
-            if(lastIndex >= 0) {
-                releases[lastIndex].tags.push('latest-' + platform);
-            }
-        });
+crawler.on('drain', () => {
+    if(!releases.length) {
+        return;
+    }
+    releases = _.chain(releases)
+        .groupBy('name')
+        .map(mirrors => _.chain(mirrors).first().omit('mirror').extend({mirrors: _.map(mirrors, 'mirror')}).value())
+        .sortBy(release => release.version.replace(/\d+/g, n => +n+1000) + (_.isUndefined(release.stage) ? '0' : '1') + release.platform + (_.isUndefined(release.stage) ? '' : release.stage))
+        .value();
+    _.chain(releases).map('version').uniq().each((version) => {
         let lastIndex = -1;
         _.chain(archs).each((platform) => {
             if(lastIndex == -1) {
-                lastIndex = _.findLastIndex(releases, release => release.platform === platform && _.isUndefined(release.stage));
+                lastIndex = _.findLastIndex(releases, release => release.platform === platform && release.version === version && _.isUndefined(release.stage));
             }
         });
         if(lastIndex >= 0) {
-            releases[lastIndex].tags.push('latest');
+            releases[lastIndex].tags.push(version);
         }
-        _.chain(releases).each((release) => {
-            _.chain(release.tags).each((tag) => {
-                if(release.name == tag) {
-                    mirror = release.mirrors.shift();
-                    services[tag] = {
-                        image: repo + ':' + tag,
-                        build: {
-                            context: context,
-                            dockerfile: 'Dockerfile.' + release.platform,
-                            args: {
-                                TS3SERVER_VERSION: release.version,
-                                TS3SERVER_URL: mirror.href,
-                                TS3SERVER_ARCHIVE: mirror.path.split('/').pop(),
-                            },
+    });
+    _.each(archs, (platform) => {
+        let lastIndex = _.findLastIndex(releases, release => release.platform === platform && !_.isUndefined(release.stage));
+        if(lastIndex >= 0) {
+            releases[lastIndex].tags.push('latest-pre-' + platform);
+        }
+    });
+    _.each(archs, (platform) => {
+        let lastIndex = _.findLastIndex(releases, release => release.platform === platform && _.isUndefined(release.stage));
+        if(lastIndex >= 0) {
+            releases[lastIndex].tags.push('latest-' + platform);
+        }
+    });
+    let lastIndex = -1;
+    _.chain(archs).each((platform) => {
+        if(lastIndex == -1) {
+            lastIndex = _.findLastIndex(releases, release => release.platform === platform && _.isUndefined(release.stage));
+        }
+    });
+    if(lastIndex >= 0) {
+        releases[lastIndex].tags.push('latest');
+    }
+    _.chain(releases).each((release) => {
+        _.chain(release.tags).each((tag) => {
+            if(release.name == tag) {
+                mirror = release.mirrors.shift();
+                services[tag] = {
+                    image: repo + ':' + tag,
+                    build: {
+                        context: context,
+                        dockerfile: 'Dockerfile.' + release.platform,
+                        args: {
+                            TS3SERVER_VERSION: release.version,
+                            TS3SERVER_URL: mirror.href,
+                            TS3SERVER_ARCHIVE: mirror.path.split('/').pop(),
                         },
-                    };
-                } else {
-                    services[tag] = {
-                        extends: release.name,
-                        image: repo + ':' + tag,
-                    };
-                }
-            });
-        });
-        fs.writeFile("./docker-compose.yml", yaml.dump({
-            version: '2.0',
-            services: services,
-        }), (err) => {
-            if(err) {
-                log.error(err);
+                    },
+                };
+            } else {
+                services[tag] = {
+                    extends: release.name,
+                    image: repo + ':' + tag,
+                };
             }
-            log.info('job done');
         });
     });
-}, 1000);
+    fs.writeFile("./docker-compose.yml", yaml.dump({
+        version: '2.0',
+        services: services,
+    }), (err) => {
+        if(err) {
+            log.error(err);
+        }
+        log.info('job done');
+    });
+});
