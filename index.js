@@ -154,8 +154,8 @@ crawler.queue({
     jail: new RegExp('^' + esr('http://dl.4players.de/ts/releases/pre_releases/server/') + '(?:' + RegExVersion.source + '(?:' + esr('/') + '(?:' + RegExServerFilename.source + ')?' + ')?' + ')?' + '$'),
 });
 
-crawler.once('drain', () => {
-    crawler.once('drain', () => {
+setTimeout(() => {
+    crawler.on('drain', () => {
         releases = _.chain(releases)
             .groupBy('name')
             .map(mirrors => _.chain(mirrors).first().omit('mirror').extend({mirrors: _.map(mirrors, 'mirror')}).value())
@@ -227,4 +227,4 @@ crawler.once('drain', () => {
             log.info('job done');
         });
     });
-});
+}, 1000);
