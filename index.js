@@ -144,6 +144,11 @@ crawler.queue({
 });
 
 crawler.queue({
+    uri: 'https://files.teamspeak-services.com/pre_releases/server/',
+    jail: new RegExp('^' + esr('https://files.teamspeak-services.com/pre_releases/server/') + '(?:' + RegExVersion.source + '(?:' + esr('/') + '(?:' + RegExServerFilename.source + ')?' + ')?' + ')?' + '$'),
+});
+
+crawler.queue({
     uri: 'http://dl.4players.de/ts/releases/',
     jail: new RegExp('^' + esr('http://dl.4players.de/ts/releases/') + '(?:' + RegExVersion.source + '(?:' + esr('/') + '(?:' + RegExServerFilename.source + ')?' + ')?' + ')?' + '$'),
 });
