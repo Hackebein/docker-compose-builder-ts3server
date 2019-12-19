@@ -9,8 +9,8 @@ const _ = require('underscore');
 const log = new Logger();
 //log.setLevel('fatal');
 
-const RegExVersion = /(3(?:\.[0-9]+)+)(?:-([0-9a-zA-Z-]+))?/;
-const RegExServerFilename = /teamspeak3-server_([0-9a-z_-]+)-(3(?:\.[0-9]+)+)(?:-([0-9a-zA-Z-]+))?((?:\.[0-9a-z]+)+)/;
+const RegExVersion = /(3(?:\.[0-9]+)+)(?:-([0-9a-zA-Z-]+(?:\.[0-9]+)?))?/;
+const RegExServerFilename = /teamspeak3-server_([0-9a-z_-]+)-(3(?:\.[0-9]+)+)(?:-([0-9a-zA-Z-]+(?:\.[0-9]+)?))?((?:\.[0-9a-z]{3}){1,2})/;
 
 const binary = process.argv.shift();
 const file = process.argv.shift();
@@ -96,7 +96,7 @@ let crawler = new Crawler({
                             if(RegExServerFilename.test(filename)) {
                                 let release = _.object(['versionRaw', 'version', 'stage'], RegExVersion.exec(_.filter(pathSegments, segment => RegExVersion.test(segment)).pop()));
                                 if(_.isString(release.stage)) {
-                                    release.stage = release.stage.replace('-', '').toLowerCase();
+                                    release.stage = release.stage.replace('-', '').replace('.', '').toLowerCase();
                                 }
                                 //release.versionParts = _.object(['major', 'minor', 'maintenance', 'build'], release.version.split('.'));
                                 release.platform = RegExServerFilename.exec(filename)[1].replace('-', '_');
