@@ -10,7 +10,7 @@ const log = new Logger();
 //log.setLevel('fatal');
 
 const RegExVersion = /(3(?:\.[0-9]+)+)(?:-([0-9a-zA-Z-]+(?:\.[0-9]+)?))?/;
-const RegExServerFilename = /teamspeak3-server_([0-9a-z_-]+)-(3(?:\.[0-9]+)+)(?:-([0-9a-zA-Z-]+(?:\.[0-9]+)?))?((?:\.[0-9a-z]{3}){1,2})/;
+const RegExServerFilename = /teamspeak3-server_([0-9a-z_-]+)-(3(?:\.[0-9]+)+)(?:-([0-9a-zA-Z-]+(?:\.[0-9]+)?))?((?:\.[a-z][0-9a-z]+){1,2})/;
 
 const binary = process.argv.shift();
 const file = process.argv.shift();
